@@ -1,0 +1,148 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>テキスト連結ツール</title>
+    <style>
+        body {
+            font-size: 12px;
+        }
+        h1 {
+            font-size: 12px;
+        }
+        h2 {
+            font-size: 12px;
+            margin-right: 10px;
+            width: 80px;
+            text-align: right;
+        }
+        textarea, button {
+            font-size: 12px;
+        }
+        p#result {
+            font-size: 12px;
+            margin-left: 90px; /* h2の幅(80px)+margin-right(10px)に揃える */
+        }
+        .input-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .copy-button {
+            margin-left: 90px; /* テキストボックスに揃える */
+            margin-bottom: 10px;
+        }
+        .memo {
+            margin-left: 90px; /* テキストボックスに揃える */
+        }
+    </style>
+    <script>
+        function updateResult() {
+            const premise = document.getElementById('premise').value;
+            const start = document.getElementById('start').value;
+            const reversal = document.getElementById('reversal').value;
+            const change = document.getElementById('change').value;
+            const conclusion = document.getElementById('conclusion').value;
+            const result = [premise, start, reversal, change, conclusion]
+                .filter(text => text.trim() !== '')
+                .join('');
+            document.getElementById('result').innerText = result;
+        }
+
+        function copyToClipboard() {
+            const resultText = document.getElementById('result').innerText;
+            if (resultText) {
+                navigator.clipboard.writeText(resultText).then(() => {
+                    alert('連結結果をクリップボードにコピーしました！');
+                }).catch(() => {
+                    alert('コピーに失敗しました。');
+                });
+            } else {
+                alert('コピーするテキストがありません。');
+            }
+        }
+
+        window.onload = function() {
+            const textareas = ['premise', 'start', 'reversal', 'change', 'conclusion'];
+            textareas.forEach(id => {
+                document.getElementById(id).addEventListener('input', updateResult);
+            });
+            updateResult();
+        };
+    </script>
+</head>
+<body>
+    <h1>テキスト連結ツール</h1>
+    
+    <div class="input-row">
+        <h2>前提：</h2>
+        <textarea id="premise" rows="1" cols="50"></textarea>
+    </div>
+    
+    <div class="input-row">
+        <h2>起点：</h2>
+        <textarea id="start" rows="1" cols="50"></textarea>
+    </div>
+    
+    <div class="input-row">
+        <h2>逆転：</h2>
+        <textarea id="reversal" rows="1" cols="50"></textarea>
+    </div>
+    
+    <div class="input-row">
+        <h2>変転：</h2>
+        <textarea id="change" rows="1" cols="50"></textarea>
+    </div>
+    
+    <div class="input-row">
+        <h2>落着：</h2>
+        <textarea id="conclusion" rows="1" cols="50"></textarea>
+    </div>
+    
+    <h2>連結結果:</h2>
+    <button class="copy-button" onclick="copyToClipboard()">連結結果をコピー</button>
+    <p id="result"></p>
+    
+    <h2>メモ</h2>
+    <textarea class="memo" id="memo" rows="4" cols="50" placeholder="自由にメモを入力してください（保存されません）"></textarea>
+</body>
+</html>
