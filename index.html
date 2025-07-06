@@ -1,0 +1,127 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テキスト連結ページ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .input-field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .input-field label {
+            width: 200px;
+            text-align: right;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            font-size: 16px;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            min-height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>テキスト連結ツール</h1>
+    <div class="input-field">
+        <label for="input1">前提</label>
+        <input type="text" id="input1">
+    </div>
+    <div class="input-field">
+        <label for="input2">起点</label>
+        <input type="text" id="input2">
+    </div>
+    <div class="input-field">
+        <label for="input3">逆転</label>
+        <input type="text" id="input3">
+    </div>
+    <div class="input-field">
+        <label for="input4">変転</label>
+        <input type="text" id="input4">
+    </div>
+    <div class="input-field">
+        <label for="input5">落着</label>
+        <input type="text" id="input5">
+    </div>
+    <div id="result">連結結果: </div>
+
+    <script>
+        // すべての入力欄を取得
+        const inputs = [
+            document.getElementById('input1'),
+            document.getElementById('input2'),
+            document.getElementById('input3'),
+            document.getElementById('input4'),
+            document.getElementById('input5')
+        ];
+        const resultDiv = document.getElementById('result');
+
+        // 入力内容を連結して表示する関数
+        function updateResult() {
+            const combinedText = inputs.map(input => input.value).join('');
+            resultDiv.textContent = '連結結果: ' + combinedText;
+        }
+
+        // 各入力欄にイベントリスナーを追加
+        inputs.forEach(input => {
+            input.addEventListener('input', updateResult);
+        });
+
+        // 初期表示
+        updateResult();
+    </script>
+</body>
+</html>
